@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>County Service Area Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; }
+    .info {
+      padding: 6px 8px;
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+// 1. Map setup
+var map = L.map('map').setView([44.5, -113], 5);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 12,
+}).addTo(map);
+
+// 2. Business list + colors
+const businesses = [
+  "Northcoast", "Motion Ai", "Rensenhouse", "QED",
+  "Anderson Controls", "Royal", "Radwell",
+  "Prime Controls", "CES"
+];
+
+const colors = {
+  "Northcoast": "#1f77b4",
+  "Motion Ai": "#ff7f0e",
+  "Rensenhouse": "#2ca02c",
+  "QED": "#d62728",
+  "Anderson Controls": "#9467bd",
+  "Royal": "#8c564b",
+  "Radwell": "#e377c2",
+  "Prime Controls": "#7f7f7f",
+  "CES": "#bcbd22"
+};
+
+let countyAssignments = {};
+
+// 3. Load county GeoJSON
+fetch("counties_15_states.geojson")
+  .then(res => res.json())
+  .then(data => {
+    L.geoJson(data, {
+      style: feature => ({
+        color: "#555",
+        weight: 1,
+        fillOpacity: 0.3
+      }),
+      onEachFeature: (feature, layer) => {
+        layer.on({
+          click: () => onCountyClick(feature, layer),
+          mouseover: e => e.target.setStyle({ weight: 2 }),
+          mouseout: e => e.target.setStyle({ weight: 1 })
+        });
+      }
+    }).addTo(map);
+  });
+
+// 4. Click handler
+function onCountyClick(feature, layer) {
+  const countyName = feature.properties.NAME;
+  let current = countyAssignments[countyName] || "";
+
+  let dropdown = `<select id="bizSelect">
+      <option value="">-- Select Business --</option>
+      ${businesses.map(b => 
+        `<option value="${b}" ${b === current ? "selected" : ""}>${b}</option>`
+      ).join("")}
+    </select>`;
+
+  layer.bindPopup(`
+    <b>${countyName}</b><br>
+    Assign business:<br>
+    ${dropdown}
+    <br><button onclick="assignBusiness('${countyName}', '${layer._leaflet_id}')">Save</button>
+  `).openPopup();
+}
+
+// 5. Assign business + recolor
+function assignBusiness(countyName, layerId) {
+  const selected = document.getElementById("bizSelect").value;
+  countyAssignments[countyName] = selected;
+
+  const layer = map._layers[layerId];
+  if (selected) {
+    layer.setStyle({ fillColor: colors[selected], fillOpacity: 0.7 });
+  } else {
+    layer.setStyle({ fillColor: "#ffffff", fillOpacity: 0.3 });
+  }
+
+  layer.closePopup();
+}
+</script>
+
+</body>
+</html>
